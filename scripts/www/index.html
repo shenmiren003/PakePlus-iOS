@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 手机端核心视口配置 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>煤质化验单（手机版）</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 12px;
+            font-size: 14px;
+        }
+        .container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        h1 {
+            color: #2c5aa0;
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+        .section-title {
+            color: #2c5aa0;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 20px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #2c5aa0;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2c5aa0;
+        }
+        input.invalid {
+            border-color: red;
+            color: red;
+        }
+        .error-hint {
+            font-size: 12px;
+            color: red;
+            margin-top: 4px;
+            display: none;
+        }
+        .red {
+            color: red;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+        }
+        .calc-btn {
+            background-color: #2c5aa0;
+        }
+        .reset-btn {
+            background-color: #6b7280;
+        }
+        .table-btn {
+            background-color: #3498db;
+        }
+        .copy-btn {
+            background-color: #27ae60;
+        }
+        /* 核心计算结果区域 */
+        .core-result {
+            background: linear-gradient(135deg, #e6f0ff 0%, #d4e4ff 100%);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+        .core-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .core-item {
+            background: rgba(200, 225, 255, 0.25);
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+        .core-label {
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .core-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .core-unit {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+        /* 表格容器 - 横向滚动适配手机 */
+        .table-wrap {
+            overflow-x: auto;
+            margin-bottom: 10px;
+            display: none; /* 默认隐藏表格 */
+        }
+        .result-table {
+            width: 100%;
+            min-width: 600px;
+            border-collapse: collapse;
+        }
+        .result-table th, .result-table td {
+            border: 1px solid #d1d5db;
+            padding: 8px 6px;
+            font-size: 13px;
+            text-align: center;
+        }
+        .result-table th {
+            background-color: #f0f5ff;
+            color: #2c5aa0;
+        }
+        .result-table td:first-child {
+            text-align: left;
+        }
+        .highlight {
+            background-color: #fff3cd !important;
+        }
+        .note {
+            font-size: 12px;
+            color: #666;
+            margin: 8px 0;
+        }
+        /* 加载、提示 */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            color: #fff;
+            font-size: 16px;
+        }
+        .toast {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0.8);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: none;
+            z-index: 999;
+        }
+        /* 隐藏元素 */
+        .hide {
+            display: none !important;
+        }
+        /* 打印样式 */
+        @media print {
+            body { padding: 0; background: #fff; }
+            .no-print { display: none !important; }
+        }
+        .print-only {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>煤质化验单（手机版）</h1>
+
+        <!-- 加载动画 -->
+        <div class="loading" id="loading">计算中...</div>
+        <!-- 消息提示 -->
+        <div class="toast" id="toast"></div>
+
+        <!-- 基础化验信息 -->
+        <div>
+            <div class="section-title">基础化验信息</div>
+            <div class="form-group">
+                <label>化验日期</label>
+                <input type="date" id="testDate">
+            </div>
+            <div class="form-group">
+                <label>煤样名称</label>
+                <input type="text" id="testCode" placeholder="请填写煤样名称">
+            </div>
+        </div>
+
+        <!-- 基础化验数据输入 -->
+        <div>
+            <div class="section-title">基础化验数据输入</div>
+            <div class="form-group">
+                <label>全水分 Mt（%）<span class="red">*</span></label>
+                <input type="text" id="Mt" data-decimal="1" placeholder="0.0">
+                <div class="error-hint" id="hint_Mt">请保留1位小数</div>
+            </div>
+            <div class="form-group">
+                <label>空气干燥基水分 Mad（%）<span class="red">*</span></label>
+                <input type="text" id="Mad" data-decimal="2" placeholder="0.00">
+                <div class="error-hint" id="hint_Mad">请保留2位小数</div>
+            </div>
+            <div class="form-group">
+                <label>空气干燥基全硫 St,ad（%）<span class="red">*</span></label>
+                <input type="text" id="Stad" data-decimal="2" placeholder="0.00">
+                <div class="error-hint" id="hint_Stad">请保留2位小数</div>
+            </div>
+            <!-- 空气干燥基氢 已隐藏 -->
+            <div class="form-group hide">
+                <label>空气干燥基氢 Had（%）</label>
+                <input type="text" id="Had" readonly style="background:#f0f9;">
+            </div>
+            <div class="form-group">
+                <label>弹筒发热量 Qb,ad（MJ/Kg）<span class="red">*</span></label>
+                <input type="text" id="Qbad" data-decimal="3" placeholder="最多3位小数">
+                <div class="error-hint" id="hint_Qbad">请输入有效数值</div>
+            </div>
+            <div class="form-group">
+                <label>空气干燥基灰分 Aad（%）</label>
+                <input type="text" id="Aad" data-decimal="2" placeholder="选填">
+            </div>
+            <div class="form-group">
+                <label>空气干燥基挥发分 Vad（%）</label>
+                <input type="text" id="Vad" data-decimal="2" placeholder="选填">
+            </div>
+            <div class="note">注：带 <span class="red">*</span> 为必填项</div>
+        </div>
+
+        <!-- 功能按钮 -->
+        <div class="btn-group">
+            <button class="calc-btn" id="calculateBtn">计算</button>
+            <button class="reset-btn" id="resetBtn">重置</button>
+            <button class="table-btn" id="tableBtn">化验结果表</button>
+            <button class="copy-btn" id="copyBtn">复制结果</button>
+        </div>
+
+        <!-- 核心计算结果区域 -->
+        <div class="core-result">
+            <div class="section-title" style="border:none;margin:0 0 10px;">核心计算结果</div>
+            <div class="core-grid">
+                <div class="core-item">
+                    <div class="core-label">全水分</div>
+                    <div class="core-value" id="core_Mt">--</div>
+                    <div class="core-unit">%</div>
+                </div>
+                <div class="core-item">
+                    <div class="core-label">干基硫</div>
+                    <div class="core-value" id="core_Std">--</div>
+                    <div class="core-unit">%</div>
+                </div>
+                <div class="core-item">
+                    <div class="core-label">收到基硫</div>
+                    <div class="core-value" id="core_Star">--</div>
+                    <div class="core-unit">%</div>
+                </div>
+                <div class="core-item">
+                    <div class="core-label">收到基低位发热量</div>
+                    <div class="core-value" id="core_Qnetar">--</div>
+                    <div class="core-unit">MJ/Kg</div>
+                </div>
+                <div class="core-item" style="grid-column: 1 / -1;">
+                    <div class="core-label">收到基低位发热量</div>
+                    <div class="core-value" id="core_Qnetar_kcal">--</div>
+                    <div class="core-unit">kcal/Kg</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 完整化验结果表（默认隐藏） -->
+        <div class="table-wrap" id="tableWrap">
+            <div class="section-title">完整化验结果表</div>
+            <table class="result-table">
+                <thead>
+                    <tr>
+                        <th>分析项目</th>
+                        <th>单位</th>
+                        <th>空气干燥基</th>
+                        <th>干燥基</th>
+                        <th>收到基</th>
+                        <th>干燥无灰基</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>全水分</td>
+                        <td>%</td>
+                        <td id="res_Mt">--</td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td>--</td>
+                    </tr>
+                    <tr>
+                        <td>空气干燥基水分</td>
+                        <td>%</td>
+                        <td id="res_Mad">--</td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td>--</td>
+                    </tr>
+                    <tr>
+                        <td>灰分</td>
+                        <td>%</td>
+                        <td id="res_Aad">--</td>
+                        <td id="res_Ad">--</td>
+                        <td id="res_Aar">--</td>
+                        <td>--</td>
+                    </tr>
+                    <tr>
+                        <td>挥发分</td>
+                        <td>%</td>
+                        <td id="res_Vad">--</td>
+                        <td id="res_Vd">--</td>
+                        <td id="res_Var">--</td>
+                        <td id="res_Vdaf">--</td>
+                    </tr>
+                    <tr>
+                        <td>全硫</td>
+                        <td>%</td>
+                        <td id="res_Stad">--</td>
+                        <td id="res_Std">--</td>
+                        <td id="res_Star">--</td>
+                        <td id="res_Stdaf">--</td>
+                    </tr>
+                    <tr>
+                        <td>氢</td>
+                        <td>%</td>
+                        <td id="res_Had">--</td>
+                        <td id="res_Hd">--</td>
+                        <td id="res_Har">--</td>
+                        <td id="res_Hdaf">--</td>
+                    </tr>
+                    <tr class="highlight">
+                        <td>高位发热量</td>
+                        <td>MJ/Kg</td>
+                        <td id="res_Qgrad">--</td>
+                        <td id="res_Qgrd">--</td>
+                        <td id="res_Qgrar">--</td>
+                        <td id="res_Qgrdaf">--</td>
+                    </tr>
+                    <tr class="highlight">
+                        <td>收到基低位发热量</td>
+                        <td colspan="5" id="res_Qnetar">--</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 打印区域 整体隐藏 -->
+        <div class="print-only"></div>
+    </div>
+
+    <script>
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        // 初始化日期
+        window.onload = function() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            $('testDate').value = y + '-' + m + '-' + d;
+        };
+
+        // 提示框
+        function showToast(msg, type = 'info') {
+            const toast = $('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            toast.style.background = type === 'error' ? 'rgba(220,53,69,0.8)' : 'rgba(0,0,0.8)';
+            setTimeout(() => toast.style.display = 'none', 3000);
+        }
+
+        // 加载状态
+        function showLoading(flag) {
+            $('loading').style.display = flag ? 'flex' : 'none';
+        }
+
+        // 输入框小数限制
+        document.querySelectorAll('[data-decimal]').forEach(inp => {
+            inp.addEventListener('wheel', e => e.preventDefault());
+            const dec = parseInt(inp.dataset.decimal);
+            const hint = $('hint_' + inp);
+
+            inp.addEventListener('input', function() {
+                let val = this.value.replace(/[^\d.]/g, '');
+                const dot = val.indexOf('.');
+                if (dot > -1) {
+                    let intPart = val.slice(0, dot);
+                    let decPart = val.slice(dot + 1).substring(0, dec);
+                    val = intPart + '.' + decPart;
+                }
+                this.value = val;
+
+                if (val) {
+                    let parts = val.split('.');
+                    let needErr = parts.length === 1 || (parts[1] && parts[1].length < dec);
+                    this.classList.toggle('invalid', needErr);
+                    hint.style.display = needErr ? 'block' : 'none';
+                } else {
+                    this.classList.remove('invalid');
+                    hint.style.display = 'block';
+                }
+            });
+
+            inp.addEventListener('blur', function() {
+                if (this.value === '' || this.classList.contains('invalid')) {
+                    hint.style.display = 'block';
+                } else {
+                    hint.style.display = 'none';
+                }
+            });
+        });
+
+        // 表单校验
+        function checkForm() {
+            const requiredFields = ['Mt','Mad','Stad','Qbad'];
+            let ok = true;
+            requiredFields.forEach(f => {
+                const inp = $(f);
+                const hint = $('hint_' + f);
+                if (inp.value.trim() === '' || inp.classList.contains('invalid')) {
+                    hint.style.display = 'block';
+                    ok = false;
+                } else {
+                    hint.style.display = 'none';
+                }
+            });
+            return ok;
+        }
+
+        // 氢含量匹配数据集
+        const qhDataList = [
+            {q:17.4,h:3.24},{q:18.57,h:3.2},{q:18.69,h:3.3},{q:18.92,h:3.37},{q:19.0,h:3.46},
+            {q:19.02,h:3.42},{q:19.07,h:3.4},{q:19.22,h:3.43},{q:19.38,h:3.4},{q:19.39,h:3.49},
+            {q:19.83,h:3.42},{q:19.98,h:3.46},{q:20.06,h:3.49},{q:20.1,h:3.51},{q:20.14,h:3.53},
+            {q:20.16,h:3.58},{q:20.19,h:3.5},{q:20.2,h:3.55},{q:20.21,h:3.52},{q:20.28,h:3.57},
+            {q:20.3,h:3.55},{q:20.31,h:3.52},{q:20.38,h:3.57},{q:20.45,h:3.56},{q:20.48,h:3.56},
+            {q:20.49,h:3.56},{q:20.5,h:3.57},{q:20.53,h:3.57},{q:20.6,h:3.6},{q:20.61,h:3.6},
+            {q:20.63,h:3.6},{q:20.65,h:3.6},{q:20.65,h:3.6},{q:20.66,h:3.61},{q:20.68,h:3.62},
+            {q:20.69,h:3.63},{q:20.72,h:3.61},{q:20.72,h:3.61},{q:20.73,h:3.61},{q:20.75,h:3.61},
+            {q:20.78,h:3.62},{q:20.83,h:3.6},{q:20.84,h:3.62},{q:20.85,h:3.63},{q:20.86,h:3.63},
+            {q:20.86,h:3.63},{q:20.87,h:3.64},{q:20.9,h:3.63},{q:20.9,h:3.62},{q:20.94,h:3.7},
+            {q:20.95,h:3.64},{q:21.01,h:3.66},{q:21.02,h:3.62},{q:21.04,h:3.64},{q:21.07,h:3.65},
+            {q:21.14,h:3.6},{q:21.17,h:3.61},{q:21.23,h:3.65},{q:21.28,h:3.66},{q:21.3,h:3.66},
+            {q:21.35,h:3.66},{q:21.4,h:3.65},{q:21.42,h:3.68},{q:21.46,h:3.67},{q:21.5,h:3.7},
+            {q:21.53,h:3.69},{q:21.56,h:3.69},{q:21.59,h:3.7},{q:21.63,h:3.71},{q:21.64,h:3.71},
+            {q:21.66,h:3.64},{q:21.74,h:3.73},{q:21.8,h:3.76},{q:21.87,h:3.74},{q:21.9,h:3.75},
+            {q:21.92,h:3.77},{q:22.06,h:3.75},{q:22.13,h:3.77},{q:22.32,h:3.8},{q:22.87,h:4.0}
+        ];
+        function getMatchHd(qgrd) {
+            if (!qgrd || isNaN(qgrd)) return 0;
+            let minDif = Infinity, resH = 0;
+            qhDataList.forEach(item => {
+                let d = Math.abs(item.q - qgrd);
+                if (d < minDif) { minDif = d; resH = item.h; }
+            });
+            return resH;
+        }
+
+        // 全局缓存结果（用于复制）
+        let copyData = {
+            date: "",
+            coalName: "",
+            mt: "",
+            sDry: "",
+            sAr: "",
+            qMj: "",
+            qKcal: ""
+        };
+
+        // 核心计算
+        function calcAll() {
+            if (!checkForm()) {
+                showToast('请完善必填项并检查格式', 'error');
+                return;
+            }
+            showLoading(true);
+            setTimeout(() => {
+                try {
+                    const Mt = parseFloat($('Mt').value) || 0;
+                    const Mad = parseFloat($('Mad').value) || 0;
+                    const Aad = parseFloat($('Aad').value) || 0;
+                    const Vad = parseFloat($('Vad').value) || 0;
+                    const Stad = parseFloat($('Stad').value) || 0;
+                    const Qbad_mj = parseFloat($('Qbad').value) || 0;
+                    const Qbad = Qbad_mj * 1000;
+
+                    let alpha = 0;
+                    if (Qbad <= 16700) alpha = 0.0010;
+                    else if (Qbad <= 25100) alpha = 0.0012;
+                    else alpha = 0.0016;
+
+                    const Qgrad = (Qbad - (94.1 * Stad + alpha * Qbad)) / 1000;
+                    const Qgrd = isNaN(Qgrad) ? 0 : Qgrad * 100 / (100 - Mad);
+                    const Hd = getMatchHd(Qgrd);
+                    let Had = Hd * (100 - Mad) / 100;
+                    Had = parseFloat(Had.toFixed(2));
+                    $('Had').value = Had.toFixed(2);
+
+                    const den1 = 100 - Mad;
+                    const den2 = 100 - Mad - Aad;
+                    const den3 = 100 - Mt;
+
+                    const Qgrar = isNaN(Qgrad) || den1 === 0 ? 0 : Qgrad * den3 / den1;
+                    const Qgrdaf = isNaN(Qgrad) || den2 === 0 ? 0 : Qgrad * 100 / den2;
+                    const Qnetad = Qgrad - 206 * Had / 1000 - 23 * Mad / 1000;
+                    let Qnetar = 0;
+                    if (!isNaN(Qnetad) && den1 > 0) {
+                        Qnetar = (Qnetad + 23 * Mad / 1000) * den3 / den1 - 23 * Mt / 1000;
+                    }
+                    Qnetar = isNaN(Qnetar) ? 0 : Qnetar;
+
+                    const Qnetar_mj = parseFloat(Qnetar.toFixed(2));
+                    const Qnetar_kcal = Qnetar_mj / 0.0041816;
+                    const Qnetar_kcal_2 = Qnetar_kcal.toFixed(2);
+                    const qnetar_full_text = `${Qnetar_mj}（${Qnetar_kcal_2} kcal/kg）`;
+
+                    function setText(id, text) {
+                        const el = $(id);
+                        if(el) el.innerText = text;
+                    }
+
+                    const Qnetdaf = isNaN(Qnetad) || den2 === 0 ? 0 : Qnetad * 100 / den2;
+                    const Ad = den1 === 0 ? 0 : Aad * 100 / den1;
+                    const Aar = den1 === 0 ? 0 : Aad * den3 / den1;
+                    const Vd = den1 === 0 ? 0 : Vad * 100 / den1;
+                    const Var = den1 === 0 ? 0 : Vad * den3 / den1;
+                    const Vdaf = den2 === 0 ? 0 : Vad * 100 / den2;
+                    const Std = den1 === 0 ? 0 : Stad * 100 / den1;
+                    const Star = den1 === 0 ? 0 : Stad * den3 / den1;
+                    const Stdaf = den2 === 0 ? 0 : Stad * 100 / den2;
+                    const Har = den1 === 0 ? 0 : Had * den3 / den1;
+                    const Hdaf = den2 === 0 ? 0 : Had * 100 / den2;
+
+                    // 缓存用于复制的数据
+                    copyData.date = $('testDate').value || "";
+                    copyData.coalName = $('testCode').value || "未填写煤样";
+                    copyData.mt = Mt.toFixed(1);
+                    copyData.sDry = Std.toFixed(2);
+                    copyData.sAr = Star.toFixed(2);
+                    copyData.qMj = Qnetar_mj;
+                    copyData.qKcal = Qnetar_kcal_2;
+
+                    // 核心结果赋值
+                    setText('core_Mt', copyData.mt);
+                    setText('core_Std', copyData.sDry);
+                    setText('core_Star', copyData.sAr);
+                    setText('core_Qnetar', copyData.qMj);
+                    setText('core_Qnetar_kcal', copyData.qKcal);
+
+                    // 表格赋值
+                    setText('res_Mt', copyData.mt);
+                    setText('res_Mad', Mad.toFixed(2));
+                    setText('res_Aad', Aad.toFixed(2));
+                    setText('res_Ad', Ad.toFixed(2));
+                    setText('res_Aar', Aar.toFixed(2));
+                    setText('res_Vad', Vad.toFixed(2));
+                    setText('res_Vd', Vd.toFixed(2));
+                    setText('res_Var', Var.toFixed(2));
+                    setText('res_Vdaf', Vdaf.toFixed(2));
+                    setText('res_Stad', Stad.toFixed(2));
+                    setText('res_Std', copyData.sDry);
+                    setText('res_Star', copyData.sAr);
+                    setText('res_Stdaf', Stdaf.toFixed(2));
+                    setText('res_Had', Had.toFixed(2));
+                    setText('res_Hd', Hd.toFixed(2));
+                    setText('res_Har', Har.toFixed(2));
+                    setText('res_Hdaf', Hdaf.toFixed(2));
+                    setText('res_Qgrad', Qgrad.toFixed(3));
+                    setText('res_Qgrd', Qgrd.toFixed(3));
+                    setText('res_Qgrar', Qgrar.toFixed(3));
+                    setText('res_Qgrdaf', Qgrdaf.toFixed(3));
+                    setText('res_Qnetar', qnetar_full_text);
+
+                    showToast('计算完成');
+                } catch (e) {
+                    showToast('计算异常', 'error');
+                    console.error(e);
+                } finally {
+                    showLoading(false);
+                }
+            }, 500);
+        }
+
+        // 切换表格显示/隐藏
+        function toggleTable() {
+            const wrap = $('tableWrap');
+            if (wrap.style.display === 'none') {
+                wrap.style.display = 'block';
+                showToast('已打开化验结果表');
+            } else {
+                wrap.style.display = 'none';
+                showToast('已关闭化验结果表');
+            }
+        }
+
+        // 复制核心计算结果（按要求优化）
+        async function copyResult() {
+            if (copyData.qKcal === "") {
+                showToast('请先点击计算按钮', 'error');
+                return;
+            }
+
+            // 处理日期：仅保留月日
+            let dateShort = "未填写日期";
+            if (copyData.date) {
+                const date = new Date(copyData.date);
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                dateShort = `${month}月${day}日`;
+            }
+
+            // 合并日期和煤样名称
+            const coalInfo = dateShort + copyData.coalName;
+
+            // 拼接复制内容（删除MJ/Kg项，优化排版）
+            const content = `煤样信息：${coalInfo}\n全水分：${copyData.mt} %\n干基硫：${copyData.sDry} %\n收到基硫：${copyData.sAr} %\n收到基低位发热量：${copyData.qKcal} kcal/kg`;
+
+            try {
+                await navigator.clipboard.writeText(content);
+                showToast('核心结果复制成功');
+            } catch (err) {
+                // 兼容低版本浏览器
+                const textarea = document.createElement('textarea');
+                textarea.value = content;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('核心结果复制成功');
+            }
+        }
+
+        // 重置
+        function resetAll() {
+            if(!confirm('确定清空所有数据？')) return;
+            document.querySelectorAll('input, select').forEach(inp => {
+                if(inp.type !== 'date') inp.value = '';
+                inp.classList.remove('invalid');
+            });
+            document.querySelectorAll('.error-hint').forEach(h => h.style.display = 'none');
+            document.querySelectorAll('[id^="core_"],[id^="res_"]').forEach(el => {
+                el.innerText = '--';
+            });
+            // 清空缓存
+            copyData = { date: "", coalName: "", mt: "", sDry: "", sAr: "", qMj: "", qKcal: "" };
+            // 隐藏表格
+            $('tableWrap').style.display = 'none';
+            showToast('已全部清空');
+        }
+
+        // 绑定事件
+        $('calculateBtn').addEventListener('click', calcAll);
+        $('resetBtn').addEventListener('click', resetAll);
+        $('tableBtn').addEventListener('click', toggleTable);
+        $('copyBtn').addEventListener('click', copyResult);
+
+        // 回车切换输入框
+        const inputList = ["Mt","Mad","Stad","Qbad","Aad","Vad"];
+        inputList.forEach((id, idx) => {
+            $(id).addEventListener('keydown', e => {
+                if(e.key === 'Enter'){
+                    e.preventDefault();
+                    if(idx < inputList.length - 1) $(inputList[idx+1]).focus();
+                    else calcAll();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
