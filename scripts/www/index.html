@@ -525,7 +525,7 @@
                     const Qbad = Qbad_mj * 1000;
 
                     let alpha = 0;
-                    if (Qbad <= 16700) alpha = 0.0010;
+                    if (Qbad <= 1670) alpha = 0.0010;
                     else if (Qbad <= 25100) alpha = 0.0012;
                     else alpha = 0.0016;
 
@@ -568,12 +568,12 @@
                     const Std = den1 === 0 ? 0 : Stad * 100 / den1;
                     const Star = den1 === 0 ? 0 : Stad * den3 / den1;
                     const Stdaf = den2 === 0 ? 0 : Stad * 100 / den2;
-                    const Har = den1 === 0 ? 0 : Had * den3 / den1;
+                    const Har = den1 === 0 ? 0 : Had * den1;
                     const Hdaf = den2 === 0 ? 0 : Had * 100 / den2;
 
                     // 缓存用于复制的数据
                     copyData.date = $('testDate').value || "";
-                    copyData.coalName = $('testCode').value || "未填写煤样";
+                    copyData.coalName = $('testCode').value || "未填写";
                     copyData.mt = Mt.toFixed(1);
                     copyData.sDry = Std.toFixed(2);
                     copyData.sAr = Star.toFixed(2);
@@ -633,7 +633,7 @@
             }
         }
 
-        // 复制核心计算结果（按要求优化）
+        // 复制核心计算结果（删除热值单位）
         async function copyResult() {
             if (copyData.qKcal === "") {
                 showToast('请先点击计算按钮', 'error');
@@ -648,16 +648,18 @@
                 const day = date.getDate();
                 dateShort = `${month}月${day}日`;
             }
-
-            // 合并日期和煤样名称
             const coalInfo = dateShort + copyData.coalName;
 
-            // 拼接复制内容（删除MJ/Kg项，优化排版）
-            const content = `煤样信息：${coalInfo}\n全水分：${copyData.mt} %\n干基硫：${copyData.sDry} %\n收到基硫：${copyData.sAr} %\n收到基低位发热量：${copyData.qKcal} kcal/kg`;
+            // 最终复制内容：删除kcal/kg单位
+            const content = `${coalInfo}
+全水分：${copyData.mt}
+干基硫：${copyData.sDry}
+收到基硫：${copyData.sAr}
+热值：${copyData.qKcal}`;
 
             try {
                 await navigator.clipboard.writeText(content);
-                showToast('核心结果复制成功');
+                showToast('复制成功');
             } catch (err) {
                 // 兼容低版本浏览器
                 const textarea = document.createElement('textarea');
@@ -666,7 +668,7 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                showToast('核心结果复制成功');
+                showToast('复制成功');
             }
         }
 
